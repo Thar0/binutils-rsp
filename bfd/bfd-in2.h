@@ -1564,6 +1564,7 @@ enum bfd_architecture
 #define bfd_mach_mips_octeon3          6503
 #define bfd_mach_mips_xlr              887682   /* decimal 'XLR'.  */
 #define bfd_mach_mips_interaptiv_mr2   736550   /* decimal 'IA2'.  */
+#define bfd_mach_mips_rsp              5395280  /* decimal 'RSP'.  */
 #define bfd_mach_mipsisa32             32
 #define bfd_mach_mipsisa32r2           33
 #define bfd_mach_mipsisa32r3           34
@@ -2566,6 +2567,11 @@ to compensate for the borrow when the low bits are added.  */
 
 /* Low 16 bits of pc-relative value  */
   BFD_RELOC_LO16_PCREL,
+
+/* Low 7 bits of RSP vector load/store.  */
+  BFD_RELOC_RSP_7,
+/* 16 bits N64 RSP data relocation.  */
+  BFD_RELOC_RSP_16,
 
 /* Equivalent of BFD_RELOC_MIPS_*, but with the MIPS16 layout of
 16-bit immediate fields  */

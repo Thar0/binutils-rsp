@@ -3,6 +3,13 @@
 This directory contains various GNU compilers, assemblers, linkers, 
 debuggers, etc., plus their support routines, definitions, and documentation.
 
+This repository in particular contains a MIPS CPU extension of GNU binutils
+targeting the N64 Reality Signal Processor (RSP). To use the RSP MIPS CPU
+extension, run with -march=rsp or -m mips:rsp where applicable.
+The rsp directory contains a sample linker script for creating an ELF file
+out of RSP code with the correct addresses for IMEM and DMEM. To convert this
+to binaries, dump the .text and .rodata sections with objdump or objcopy.
+
 If you are receiving this as part of a GDB release, see the file gdb/README.
 If with a binutils release, see binutils/README;  if with a libg++ release,
 see libg++/README, etc.  That'll give you info about this

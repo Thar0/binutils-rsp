@@ -5966,6 +5966,9 @@ mips_elf_calculate_relocation (bfd *abfd, bfd *input_bfd,
       return bfd_reloc_ok;
     }
 
+  if (abfd->arch_info->bits_per_address <= 16 && howto->bitsize <= 16)
+    symbol &= 0xFFFF;
+
   /* Figure out what kind of relocation is being performed.  */
   switch (r_type)
     {
@@ -5973,10 +5976,18 @@ mips_elf_calculate_relocation (bfd *abfd, bfd *input_bfd,
       return bfd_reloc_continue;
 
     case R_MIPS_16:
+    case R_MIPS_RSP16:
       if (howto->partial_inplace)
 	addend = _bfd_mips_elf_sign_extend (addend, 16);
       value = symbol + addend;
       overflowed_p = mips_elf_overflow_p (value, 16);
+      break;
+
+    case R_MIPS_RSP7:
+      if (howto->partial_inplace)
+	addend = _bfd_mips_elf_sign_extend (addend, 7);
+      value = symbol + addend;
+      overflowed_p = mips_elf_overflow_p (value, 7);
       break;
 
     case R_MIPS_32:
@@ -6526,6 +6537,60 @@ mips_elf_perform_relocation (struct bfd_link_info *info,
   /* Obtain the current value.  */
   x = mips_elf_obtain_contents (howto, relocation, input_bfd, contents);
 
+  if (r_type == R_MIPS_RSP7)
+    /* Horrible hack for opcode-dependent shift to the offset.  */
+    {
+      static struct
+      {
+        unsigned long insn_match;
+        int div;
+      } vec_map[] = {
+/* lbv */ { 0xC8000000,  1 },
+/* lsv */ { 0xC8000800,  2 },
+/* llv */ { 0xC8001000,  4 },
+/* ldv */ { 0xC8001800,  8 },
+/* lqv */ { 0xC8002000, 16 },
+/* lrv */ { 0xC8002800, 16 },
+/* lpv */ { 0xC8003000,  8 },
+/* luv */ { 0xC8003800,  8 },
+/* lhv */ { 0xC8004000, 16 },
+/* lfv */ { 0xC8004800, 16 },
+/* lwv */ { 0xC8005000, 16 },
+/* ltv */ { 0xC8005800, 16 },
+/* sbv */ { 0xE8000000,  1 },
+/* ssv */ { 0xE8000800,  2 },
+/* slv */ { 0xE8001000,  4 },
+/* sdv */ { 0xE8001800,  8 },
+/* sqv */ { 0xE8002000, 16 },
+/* srv */ { 0xE8002800, 16 },
+/* spv */ { 0xE8003000,  8 },
+/* suv */ { 0xE8003800,  8 },
+/* shv */ { 0xE8004000, 16 },
+/* sfv */ { 0xE8004800, 16 },
+/* swv */ { 0xE8005000, 16 },
+/* stv */ { 0xE8005800, 16 },
+      };
+      size_t i;
+
+      for (i = 0; i < ARRAY_SIZE(vec_map); i++)
+        if (vec_map[i].insn_match == (x & 0xFC00F800))
+          {
+            int addend = x & 0x7f;
+            value -= addend;
+            /* Ensure symbol alignment is permitted.  */
+            if (value % vec_map[i].div != 0)
+              {
+                info->callbacks->einfo
+	                (_("%X%H: invalid alignment while performing an R_MIPS_RSP7 relocation\n"),
+	                input_bfd, input_section, relocation->r_offset);
+	            return false;
+              }
+            value /= vec_map[i].div;
+            value += addend;
+            break;
+          }
+    }
+
   /* Clear the field we are setting.  */
   x &= ~howto->dst_mask;
 
@@ -6979,6 +7044,9 @@ _bfd_elf_mips_mach (flagword flags)
 
     case E_MIPS_MACH_IAMR2:
       return bfd_mach_mips_interaptiv_mr2;
+
+    case E_MIPS_MACH_RSP:
+      return bfd_mach_mips_rsp;
 
     default:
       switch (flags & EF_MIPS_ARCH)
@@ -12370,6 +12438,9 @@ mips_set_isa_flags (bfd *abfd)
     case bfd_mach_mipsisa64r6:
       val = E_MIPS_ARCH_64R6;
       break;
+
+    case bfd_mach_mips_rsp:
+      val = E_MIPS_ARCH_2 | E_MIPS_MACH_RSP;
     }
   elf_elfheader (abfd)->e_flags &= ~(EF_MIPS_ARCH | EF_MIPS_MACH);
   elf_elfheader (abfd)->e_flags |= val;

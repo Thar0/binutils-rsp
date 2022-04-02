@@ -889,6 +889,35 @@ static reloc_howto_type mips_elf64_howto_table_rel[] =
 	 0x0000ffff,		/* dst_mask */
 	 true),			/* pcrel_offset */
 
+  /* 7 bit N64 RSP vector load/store relocation.  */
+  HOWTO (R_MIPS_RSP7,		    /* type */
+     0,                         /* rightshift */
+     2,                         /* size (0 = byte, 1 = short, 2 = long) */
+     7,                         /* bitsize */
+     false,                     /* pc_relative */
+     0,                         /* bitpos */
+     complain_overflow_signed,  /* complain_on_overflow */
+     _bfd_mips_elf_generic_reloc, /* special_function */
+     "R_MIPS_RSP7",            /* name */
+     true,                      /* partial_inplace */
+     0x0000007f,                /* src_mask */
+     0x0000007f,                /* dst_mask */
+     false),                    /* pcrel_offset */
+
+  /* 16 bit N64 RSP data relocation.  */
+  HOWTO (R_MIPS_RSP16,		/* type */
+	 0,			/* rightshift */
+	 1,			/* size (0 = byte, 1 = short, 2 = long) */
+	 16,			/* bitsize */
+	 false,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed, /* complain_on_overflow */
+	 _bfd_mips_elf_generic_reloc, /* special_function */
+	 "R_MIPS_RSP16",		/* name */
+	 true,			/* partial_inplace */
+	 0xffff,		/* src_mask */
+	 0xffff,		/* dst_mask */
+	 false),		/* pcrel_offset */
 };
 
 /* The relocation table used for SHT_RELA sections.  */
@@ -1670,6 +1699,35 @@ static reloc_howto_type mips_elf64_howto_table_rela[] =
 	 0x0000ffff,		/* dst_mask */
 	 true),			/* pcrel_offset */
 
+  /* 7 bit N64 RSP vector load/store relocation.  */
+  HOWTO (R_MIPS_RSP7,		    /* type */
+     0,                         /* rightshift */
+     2,                         /* size (0 = byte, 1 = short, 2 = long) */
+     7,                         /* bitsize */
+     false,                     /* pc_relative */
+     0,                         /* bitpos */
+     complain_overflow_signed,  /* complain_on_overflow */
+     _bfd_mips_elf_generic_reloc, /* special_function */
+     "R_MIPS_RSP7",            /* name */
+     false,                      /* partial_inplace */
+     0,                         /* src_mask */
+     0x0000007F,                /* dst_mask */
+     false),                    /* pcrel_offset */
+
+  /* 16 bit N64 RSP data relocation.  */
+  HOWTO (R_MIPS_RSP16,		/* type */
+	 0,			/* rightshift */
+	 1,			/* size (0 = byte, 1 = short, 2 = long) */
+	 16,			/* bitsize */
+	 false,			/* pc_relative */
+	 0,			/* bitpos */
+	 complain_overflow_signed, /* complain_on_overflow */
+	 _bfd_mips_elf_generic_reloc, /* special_function */
+	 "R_MIPS_RSP16",		/* name */
+	 false,			/* partial_inplace */
+	 0xffff,		/* src_mask */
+	 0xffff,		/* dst_mask */
+	 false),		/* pcrel_offset */
 };
 
 static reloc_howto_type mips16_elf64_howto_table_rel[] =
@@ -3736,7 +3794,9 @@ static const struct elf_reloc_map mips_reloc_map[] =
   { BFD_RELOC_MIPS_18_PCREL_S3, R_MIPS_PC18_S3 },
   { BFD_RELOC_MIPS_19_PCREL_S2, R_MIPS_PC19_S2 },
   { BFD_RELOC_HI16_S_PCREL, R_MIPS_PCHI16 },
-  { BFD_RELOC_LO16_PCREL, R_MIPS_PCLO16 }
+  { BFD_RELOC_LO16_PCREL, R_MIPS_PCLO16 },
+  { BFD_RELOC_RSP_7, R_MIPS_RSP7 },
+  { BFD_RELOC_RSP_16, R_MIPS_RSP16 }
 };
 
 static const struct elf_reloc_map mips16_reloc_map[] =
