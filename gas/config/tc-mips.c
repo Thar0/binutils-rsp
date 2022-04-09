@@ -3008,7 +3008,7 @@ mips_parse_register (char **sptr, unsigned int *symval_ptr,
   s = e = *sptr;
   if (is_name_beginner (*e))
     ++e;
-  while (is_part_of_name (*e))
+  while (is_part_of_name (*e) && *e != '.') // !TODO does this extra condition break anything
     ++e;
 
   channels = 0;
@@ -3340,6 +3340,33 @@ mips_parse_argument_token (char *s, char float_format)
 	    }
 	  ++s;
 	}
+      else if (*s == '.') /* Check for N64 RSP extended vector index.  */
+	{
+	  expressionS element;
+
+	  ++s;
+	  if (*s == 'e' || *s == 'h' || *s == 'q' || *s == 'b')
+		{
+		  token.u.ch = *s++;
+		  mips_add_token (&token, OT_CHAR);
+		}
+	  else
+		{
+		  set_insn_error(0, _(". should be followed by e,h,q or b")); /// !TODO error message
+		  return 0;
+		}
+
+	  my_getExpression (&element, s);
+	  if (element.X_op != O_constant)
+		{
+		  set_insn_error (0, _("vector element must be constant"));
+		  return 0;
+		}
+
+	  s = expr_end;
+	  token.u.index = element.X_add_number;
+	  mips_add_token (&token, OT_INTEGER_INDEX);
+	}
       return s;
     }
 
@@ -3370,6 +3397,7 @@ mips_parse_argument_token (char *s, char float_format)
   token.u.integer.relocs[2] = BFD_RELOC_UNUSED;
   my_getSmallExpression (&token.u.integer.value, token.u.integer.relocs, s);
   s = expr_end;
+
   mips_add_token (&token, OT_INTEGER);
   return s;
 }
@@ -5994,18 +6022,70 @@ static bool
 match_imm_index_operand (struct mips_arg_info *arg,
 			 const struct mips_operand *operand)
 {
+  unsigned int mul;
   unsigned int max_val;
+  unsigned int uval;
 
-  if (arg->token->type != OT_INTEGER_INDEX)
-    return false;
-
-  max_val = (1 << operand->size) - 1;
-  if (arg->token->u.index > max_val)
+  mul = 1;
+  if ((mips_opts.ase & ASE_RSP) && arg->token->type == OT_CHAR)
     {
-      match_out_of_range (arg);
-      return false;
+      static const char * const rsp_special_load_stores[] =
+        { "lpv", "luv", "spv", "suv", "ltv", "stv" };
+      unsigned int i;
+
+      /* RSP extended index.  */
+      switch (arg->token->u.ch)
+        {
+          case 'e':
+            mul = 2;
+            break;
+          case 'b':
+            mul = 1;
+            break;
+          case 'q':
+          case 'h':
+            set_insn_error_ss
+              (0, _("%s does not support .%s broadcast modifier"),
+               arg->insn->insn_mo->name,
+               (arg->token->u.ch == 'q') ? "q" : "h");
+            return false;
+          default:
+            return false;
+        }
+      ++arg->token;
+
+      /* Some vector load/stores behave differently.  */
+      for (i = 0; i < ARRAY_SIZE (rsp_special_load_stores); ++i)
+        {
+          if (streq (arg->insn->insn_mo->name, rsp_special_load_stores[i]))
+            {
+              if (mul == 1)
+                {
+                  set_insn_error_ss
+                    (0, _("%s%s does not support byte indexing"),
+                     arg->insn->insn_mo->name,
+                     "");
+                  return false;
+                }
+              if (arg->insn->insn_mo->name[1] != 't')
+                mul /= 2;
+              break;
+            }
+        }
     }
-  insn_insert_operand (arg->insn, operand, arg->token->u.index);
+
+    if (arg->token->type != OT_INTEGER_INDEX)
+      return false;
+
+    uval = arg->token->u.index * mul;
+    max_val = (1 << operand->size) - 1;
+    if (uval > max_val)
+      {
+        match_out_of_range (arg);
+        return false;
+      }
+
+  insn_insert_operand (arg->insn, operand, uval);
   ++arg->token;
   return true;
 }
@@ -6291,6 +6371,72 @@ match_vu0_suffix_operand (struct mips_arg_info *arg,
 /* OP_REG_RSP_INDEX matcher.  */
 
 static bool
+match_reg_rsp_extended_index_operand (struct mips_arg_info *arg,
+			  const struct mips_operand *operand, unsigned int uval)
+{
+  unsigned int e, ebase, emax;
+  char qual;
+
+  /* We know already the token is OT_CHAR, check for e, h, q, b.  */
+  qual = arg->token->u.ch;
+
+  if (!(qual == 'e' || qual == 'h' || qual == 'q' || qual == 'b'))
+	{
+	  set_insn_error (arg->argnum, _("invalid index"));
+	  return false;
+	}
+
+  ++arg->token;
+
+  /* Next token should be a constant.  */
+  if (arg->token->type != OT_INTEGER_INDEX)
+	{
+	  set_insn_error (arg->argnum, _("invalid index"));
+	  return false;
+	}
+
+  e = arg->token->u.index;
+  ++arg->token;
+
+  switch (qual)
+  {
+    case 'e':
+      ebase = 1 << 3;
+      break;
+    case 'h':
+      ebase = 1 << 2;
+      break;
+    case 'q':
+      ebase = 1 << 1;
+      break;
+    case 'b':
+      set_insn_error (arg->argnum, _("vector computational instructions do not support byte indexing"));
+      return false;
+    default:
+      return false;
+  }
+  emax = ebase - 1;
+
+  if (e > emax)
+{
+      set_insn_error (arg->argnum, _("invalid vector element index"));
+      return false;
+}
+
+  /* Last token is either OT_CHAR ',' or OT_END.  */
+  if ((arg->token->type != OT_CHAR || arg->token->u.ch != ',') && arg->token->type != OT_END)
+    {
+      set_insn_error (arg->argnum, _("vector register operand does not terminate appropriately"));
+      return false;
+    }
+
+  uval |= (e | ebase) << 5;
+
+  insn_insert_operand (arg->insn, operand, uval);
+  return true;
+}
+
+static bool
 match_reg_rsp_index_operand (struct mips_arg_info *arg,
 			  const struct mips_operand *operand)
 {
@@ -6308,6 +6454,10 @@ match_reg_rsp_index_operand (struct mips_arg_info *arg,
 
   uval = regno;
   ++arg->token;
+
+  /* May be extended syntax.  */
+  if (arg->token->type == OT_CHAR && arg->token->u.ch != ',')
+    return match_reg_rsp_extended_index_operand (arg, operand, uval);
 
   /* There may be OT_INTEGER_INDEX (qualified by either 'q' or 'h') as the next token, or nothing.  */
   if (arg->token->type == OT_INTEGER_INDEX)
@@ -12186,6 +12336,12 @@ macro (struct mips_cl_insn *ip, char *str)
     ld_st_rsp:
 	  macro_build (&offset_expr, s, fmt, op[0], op[1],
 		       BFD_RELOC_RSP_7, op[3]);
+
+      if (offset_expr.X_op != O_constant && offset_expr.X_op != O_symbol)
+	{
+	  as_bad (_("expression too complex"));
+	  offset_expr.X_op = O_constant;
+	}
 
       if (offset_expr.X_op == O_constant && offset_expr.X_add_number != op[2])
         as_bad(_("operand 2 out of range"));
