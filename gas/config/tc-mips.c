@@ -601,6 +601,7 @@ static int mips_32bitmode = 0;
     && mips_opts.isa != ISA_MIPS2                     \
     && mips_opts.isa != ISA_MIPS3)                    \
    || mips_opts.arch == CPU_R4300                     \
+   || mips_opts.arch == CPU_RSP                       \
    || mips_opts.micromips                             \
    )
 
@@ -1576,6 +1577,8 @@ enum options
     OPTION_NO_LOONGSON_EXT,
     OPTION_LOONGSON_EXT2,
     OPTION_NO_LOONGSON_EXT2,
+    OPTION_RSP,
+    OPTION_NO_RSP,
     OPTION_END_OF_ENUM
   };
 
@@ -1644,6 +1647,8 @@ struct option md_longopts[] =
   {"mno-loongson-ext", no_argument, NULL, OPTION_NO_LOONGSON_EXT},
   {"mloongson-ext2", no_argument, NULL, OPTION_LOONGSON_EXT2},
   {"mno-loongson-ext2", no_argument, NULL, OPTION_NO_LOONGSON_EXT2},
+  {"mrsp", no_argument, NULL, OPTION_RSP},
+  {"mno-rsp", no_argument, NULL, OPTION_NO_RSP},
 
   /* Old-style architecture options.  Don't add more of these.  */
   {"m4650", no_argument, NULL, OPTION_M4650},
@@ -1863,6 +1868,11 @@ static const struct mips_ase mips_ases[] = {
 
   { "loongson-ext2", ASE_LOONGSON_EXT | ASE_LOONGSON_EXT2, 0,
     OPTION_LOONGSON_EXT2, OPTION_NO_LOONGSON_EXT2,
+    0, 0, -1, -1,
+    -1 },
+
+  { "rsp", ASE_RSP, 0,
+    OPTION_RSP, OPTION_NO_RSP,
     0, 0, -1, -1,
     -1 },
 };
@@ -2698,6 +2708,8 @@ struct regname {
 #define RTYPE_R5900_R	0x0200000
 #define RTYPE_R5900_ACC	0x0400000
 #define RTYPE_MSA	0x0800000
+#define RTYPE_RSP_VEC	0x1000000
+#define RTYPE_RSP_VEC_CTRL 0x2000000
 #define RWARN		0x8000000
 
 #define GENERIC_REGISTER_NUMBERS \
@@ -2853,36 +2865,36 @@ struct regname {
 #define MDMX_VECTOR_REGISTER_NAMES \
     /* {"$v0",	RTYPE_VEC | 0},  Clash with REG 2 above.  */ \
     /* {"$v1",	RTYPE_VEC | 1},  Clash with REG 3 above.  */ \
-    {"$v2",	RTYPE_VEC | 2},  \
-    {"$v3",	RTYPE_VEC | 3},  \
-    {"$v4",	RTYPE_VEC | 4},  \
-    {"$v5",	RTYPE_VEC | 5},  \
-    {"$v6",	RTYPE_VEC | 6},  \
-    {"$v7",	RTYPE_VEC | 7},  \
-    {"$v8",	RTYPE_VEC | 8},  \
-    {"$v9",	RTYPE_VEC | 9},  \
-    {"$v10",	RTYPE_VEC | 10}, \
-    {"$v11",	RTYPE_VEC | 11}, \
-    {"$v12",	RTYPE_VEC | 12}, \
-    {"$v13",	RTYPE_VEC | 13}, \
-    {"$v14",	RTYPE_VEC | 14}, \
-    {"$v15",	RTYPE_VEC | 15}, \
-    {"$v16",	RTYPE_VEC | 16}, \
-    {"$v17",	RTYPE_VEC | 17}, \
-    {"$v18",	RTYPE_VEC | 18}, \
-    {"$v19",	RTYPE_VEC | 19}, \
-    {"$v20",	RTYPE_VEC | 20}, \
-    {"$v21",	RTYPE_VEC | 21}, \
-    {"$v22",	RTYPE_VEC | 22}, \
-    {"$v23",	RTYPE_VEC | 23}, \
-    {"$v24",	RTYPE_VEC | 24}, \
-    {"$v25",	RTYPE_VEC | 25}, \
-    {"$v26",	RTYPE_VEC | 26}, \
-    {"$v27",	RTYPE_VEC | 27}, \
-    {"$v28",	RTYPE_VEC | 28}, \
-    {"$v29",	RTYPE_VEC | 29}, \
-    {"$v30",	RTYPE_VEC | 30}, \
-    {"$v31",	RTYPE_VEC | 31}
+    {"$v2",	RTYPE_RSP_VEC | RTYPE_VEC | 2},  \
+    {"$v3",	RTYPE_RSP_VEC | RTYPE_VEC | 3},  \
+    {"$v4",	RTYPE_RSP_VEC | RTYPE_VEC | 4},  \
+    {"$v5",	RTYPE_RSP_VEC | RTYPE_VEC | 5},  \
+    {"$v6",	RTYPE_RSP_VEC | RTYPE_VEC | 6},  \
+    {"$v7",	RTYPE_RSP_VEC | RTYPE_VEC | 7},  \
+    {"$v8",	RTYPE_RSP_VEC | RTYPE_VEC | 8},  \
+    {"$v9",	RTYPE_RSP_VEC | RTYPE_VEC | 9},  \
+    {"$v10",	RTYPE_RSP_VEC | RTYPE_VEC | 10}, \
+    {"$v11",	RTYPE_RSP_VEC | RTYPE_VEC | 11}, \
+    {"$v12",	RTYPE_RSP_VEC | RTYPE_VEC | 12}, \
+    {"$v13",	RTYPE_RSP_VEC | RTYPE_VEC | 13}, \
+    {"$v14",	RTYPE_RSP_VEC | RTYPE_VEC | 14}, \
+    {"$v15",	RTYPE_RSP_VEC | RTYPE_VEC | 15}, \
+    {"$v16",	RTYPE_RSP_VEC | RTYPE_VEC | 16}, \
+    {"$v17",	RTYPE_RSP_VEC | RTYPE_VEC | 17}, \
+    {"$v18",	RTYPE_RSP_VEC | RTYPE_VEC | 18}, \
+    {"$v19",	RTYPE_RSP_VEC | RTYPE_VEC | 19}, \
+    {"$v20",	RTYPE_RSP_VEC | RTYPE_VEC | 20}, \
+    {"$v21",	RTYPE_RSP_VEC | RTYPE_VEC | 21}, \
+    {"$v22",	RTYPE_RSP_VEC | RTYPE_VEC | 22}, \
+    {"$v23",	RTYPE_RSP_VEC | RTYPE_VEC | 23}, \
+    {"$v24",	RTYPE_RSP_VEC | RTYPE_VEC | 24}, \
+    {"$v25",	RTYPE_RSP_VEC | RTYPE_VEC | 25}, \
+    {"$v26",	RTYPE_RSP_VEC | RTYPE_VEC | 26}, \
+    {"$v27",	RTYPE_RSP_VEC | RTYPE_VEC | 27}, \
+    {"$v28",	RTYPE_RSP_VEC | RTYPE_VEC | 28}, \
+    {"$v29",	RTYPE_RSP_VEC | RTYPE_VEC | 29}, \
+    {"$v30",	RTYPE_RSP_VEC | RTYPE_VEC | 30}, \
+    {"$v31",	RTYPE_RSP_VEC | RTYPE_VEC | 31}
 
 #define R5900_I_NAMES \
     {"$I",	RTYPE_R5900_I | 0}
@@ -2901,6 +2913,11 @@ struct regname {
     {"$ac1",	RTYPE_ACC | 1}, \
     {"$ac2",	RTYPE_ACC | 2}, \
     {"$ac3",	RTYPE_ACC | 3}
+
+#define MIPS_RSP_VEC_CTRL_NAMES \
+    {"$vco",	RTYPE_RSP_VEC_CTRL | 0}, \
+    {"$vcc",	RTYPE_RSP_VEC_CTRL | 1}, \
+    {"$vce",	RTYPE_RSP_VEC_CTRL | 2}
 
 static const struct regname reg_names[] = {
   GENERIC_REGISTER_NUMBERS,
@@ -2921,6 +2938,7 @@ static const struct regname reg_names[] = {
   R5900_R_NAMES,
   R5900_ACC_NAMES,
   MIPS_DSP_ACCUMULATOR_NAMES,
+  MIPS_RSP_VEC_CTRL_NAMES,
   {0, 0}
 };
 
@@ -2943,7 +2961,7 @@ static unsigned int
 mips_prefer_vec_regno (unsigned int symval)
 {
   if ((symval & -2) == (RTYPE_GP | 2))
-    return RTYPE_VEC | (symval & 1);
+    return RTYPE_RSP_VEC | RTYPE_VEC | (symval & 1);
   return symval;
 }
 
@@ -3038,7 +3056,7 @@ reg_lookup (char **s, unsigned int types, unsigned int *regnop)
 
   if (mips_parse_register (s, &regno, NULL))
     {
-      if (types & RTYPE_VEC)
+      if (types & (RTYPE_VEC | RTYPE_RSP_VEC))
 	regno = mips_prefer_vec_regno (regno);
       if (regno & types)
 	regno &= RNUM_MASK;
@@ -3309,6 +3327,13 @@ mips_parse_argument_token (char *s, char float_format)
 	      s = expr_parse_end;
 	      token.u.index = element.X_add_number;
 	      mips_add_token (&token, OT_INTEGER_INDEX);
+
+	      /* Check for N64 RSP vector element qualifier */
+	      if (*s != ']')
+		{
+		  token.u.ch = *s++;
+		  mips_add_token (&token, OT_CHAR);
+		}
 	    }
 	  SKIP_SPACE_TABS (s);
 	  if (*s != ']')
@@ -4713,6 +4738,12 @@ operand_reg_mask (const struct mips_cl_insn *insn,
       if (!(type_mask & (1 << OP_REG_GP)))
 	return 0;
       return 1u << insn_extract_operand (insn, operand);
+
+    case OP_REG_RSP_INDEX:
+      if (!(type_mask & (1 << OP_REG_RSP_VEC)))
+	return 0;
+      uval = insn_extract_operand (insn, operand);
+      return 1 << (uval & 31);
     }
   abort ();
 }
@@ -4874,6 +4905,30 @@ mips_oddfpreg_ok (const struct mips_opcode *insn, int opnum)
     return oddspreg;
 
   return FPR_SIZE == 64;
+}
+
+/* Return the mask of RSP vector registers that IP reads.  */
+
+static unsigned int
+rsp_vec_read_mask (const struct mips_cl_insn *ip)
+{
+  unsigned int mask;
+
+  mask = insn_reg_mask (ip, 1 << OP_REG_RSP_VEC, insn_read_mask (ip->insn_mo));
+
+  return mask;
+}
+
+/* Return the mask of RSP vector registers that IP writes.  */
+
+static unsigned int
+rsp_vec_write_mask (const struct mips_cl_insn *ip)
+{
+  unsigned int mask;
+
+  mask = insn_reg_mask (ip, 1 << OP_REG_RSP_VEC, insn_write_mask (ip->insn_mo));
+
+  return mask;
 }
 
 /* Information about an instruction argument that we're trying to match.  */
@@ -5084,6 +5139,12 @@ convert_reg_type (const struct mips_opcode *opcode,
 
     case OP_REG_MSA_CTRL:
       return RTYPE_NUM;
+
+    case OP_REG_RSP_VEC:
+      return RTYPE_RSP_VEC;
+
+    case OP_REG_RSP_VEC_CTRL:
+      return RTYPE_RSP_VEC_CTRL;
     }
   abort ();
 }
@@ -5138,7 +5199,7 @@ static bool
 match_regno (struct mips_arg_info *arg, enum mips_reg_operand_type type,
 	     unsigned int symval, unsigned int *regno)
 {
-  if (type == OP_REG_VEC)
+  if (type == OP_REG_VEC || type == OP_REG_RSP_VEC)
     symval = mips_prefer_vec_regno (symval);
   if (!(symval & convert_reg_type (arg->insn->insn_mo, type)))
     return false;
@@ -6229,6 +6290,82 @@ match_vu0_suffix_operand (struct mips_arg_info *arg,
   return true;
 }
 
+/* OP_REG_RSP_INDEX matcher.  */
+
+static bool
+match_reg_rsp_index_operand (struct mips_arg_info *arg,
+			     const struct mips_operand *operand)
+{
+  unsigned int regno;
+  unsigned int uval;
+  unsigned int e, emax, ebase;
+
+  uval = 0;
+  e = emax = 0;
+  ebase = 0;
+
+  /* First token is OT_REG of type rsp vector register.  */
+  if (arg->token->type != OT_REG
+      || !match_regno (arg, OP_REG_RSP_VEC, arg->token->u.regno, &regno))
+    return false;
+
+  uval = regno;
+  ++arg->token;
+
+  /* There may be OT_INTEGER_INDEX (qualified by either 'q' or 'h') as the
+     next token, or nothing.  */
+  if (arg->token->type == OT_INTEGER_INDEX)
+    {
+      emax = 7;
+      ebase = 1 << 3;
+      e = arg->token->u.index;
+      ++arg->token;
+
+      /* There may be OT_CHAR 'q' or 'h' as the next token, or nothing.  */
+      if (arg->token->type == OT_CHAR && arg->token->u.ch != ',')
+	{
+	  switch (arg->token->u.ch)
+	    {
+	    case 'q':
+	      emax = 1;
+	      ebase = 1 << 1;
+	      ++arg->token;
+	      break;
+	    case 'h':
+	      emax = 3;
+	      ebase = 1 << 2;
+	      ++arg->token;
+	      break;
+	    default:
+	      set_insn_error (arg->argnum,
+		_("invalid vector element qualifier,"
+		  " should be 'q' or 'h' or none"));
+	      return false;
+	    }
+	}
+    }
+
+  /* Last token is either OT_CHAR ',' or OT_END.  */
+  if ((arg->token->type != OT_CHAR || arg->token->u.ch != ',')
+      && arg->token->type != OT_END)
+    {
+      set_insn_error (arg->argnum,
+	_("vector register operand does not terminate appropriately"));
+      return false;
+    }
+
+  if (e > emax)
+    {
+      set_insn_error (arg->argnum, _("invalid vector element index"));
+      return false;
+    }
+
+  uval |= (e | ebase) << 5;
+
+  insn_insert_operand (arg->insn, operand, uval);
+  return true;
+}
+
 /* Try to match a token from ARG against OPERAND.  Consume the token
    and return true on success, otherwise return false.  */
 
@@ -6310,6 +6447,9 @@ match_operand (struct mips_arg_info *arg,
 
     case OP_NON_ZERO_REG:
       return match_non_zero_reg_operand (arg, operand);
+
+    case OP_REG_RSP_INDEX:
+      return match_reg_rsp_index_operand (arg, operand);
     }
   abort ();
 }
@@ -7214,6 +7354,69 @@ can_swap_branch_p (struct mips_cl_insn *ip, expressionS *address_expr,
   return true;
 }
 
+static bool
+rsp_can_swap_su_vu (struct mips_cl_insn *ip)
+{
+  unsigned int rsp_vec_read, rsp_vec_write, prev_rsp_vec_read, prev_rsp_vec_write;
+  struct mips_cl_insn *prev = &history[0];
+
+  /* -O2 and above is required for this optimization.  */
+  if (mips_optimize < 2)
+    return false;
+
+  /* If we have seen .set volatile or .set nomove, don't optimize.  */
+  if (mips_opts.nomove)
+    return false;
+
+  /* We can't swap if the previous instruction's position is fixed.  */
+  if (history[0].fixed_p)
+    return false;
+
+  /* If the previous previous insn was in a .set noreorder, we can't
+     swap.  Actually, the MIPS assembler will swap in this situation.
+     However, gcc configured -with-gnu-as will generate code like
+
+	.set	noreorder
+	lw	$4,XXX
+	.set	reorder
+	INSN
+	bne	$4,$0,foo
+
+     in which we can not swap the bne and INSN.  If gcc is not configured
+     -with-gnu-as, it does not output the .set pseudo-ops.  */
+  if (history[1].noreorder_p)
+    return false;
+
+  if (seg_info (now_seg)->label_list)
+    return false;
+
+  /* No point swapping if they are both VU instructions.  */
+  if (prev->insn_mo->pinfo2 & INSN2_RSP_VU)
+    return false;
+
+  /* No point swapping if it just moves it next to yet another VU instruction.  */
+  if (history[1].insn_mo->pinfo2 & INSN2_RSP_VU)
+    return false;
+
+  /* Cannot swap if there are any data dependencies. We only need to check
+     vector registers as all VU instructions only operate on the vector
+     registers.  */
+  rsp_vec_read = rsp_vec_read_mask (ip);
+  prev_rsp_vec_write = rsp_vec_write_mask (prev);
+  if (rsp_vec_read & prev_rsp_vec_write)
+    return false;
+
+  rsp_vec_write = rsp_vec_write_mask (ip);
+  if (rsp_vec_write & prev_rsp_vec_write)
+    return false;
+
+  prev_rsp_vec_read = rsp_vec_read_mask (prev);
+  if (rsp_vec_write & prev_rsp_vec_read)
+    return false;
+
+  return true;
+}
+
 /* Decide how we should add IP to the instruction stream.
    ADDRESS_EXPR is an operand of the instruction to be used with
    RELOC_TYPE.  */
@@ -7253,6 +7456,14 @@ get_append_method (struct mips_cl_insn *ip, expressionS *address_expr,
 	return APPEND_ADD_COMPACT;
 
       return APPEND_ADD_WITH_NOP;
+    }
+  else if ((mips_opts.ase & ASE_RSP) && mips_optimize == 2
+	   && (ip->insn_mo->pinfo2 & INSN2_RSP_VU))
+    {
+      /* When optimizing, interleave rsp scalar and vector instructions
+	 where possible for greater pipeline efficiency.  */
+      if (rsp_can_swap_su_vu (ip))
+	return APPEND_SWAP;
     }
 
   return APPEND_ADD;
@@ -7447,7 +7658,16 @@ calculate_reloc (bfd_reloc_code_real_type reloc, offsetT operand,
     case BFD_RELOC_LO16_PCREL:
     case BFD_RELOC_MICROMIPS_LO16:
     case BFD_RELOC_MIPS16_LO16:
+    case BFD_RELOC_RSP_16:
       *result = operand & 0xffff;
+      return true;
+
+    case BFD_RELOC_RSP_7_0:
+    case BFD_RELOC_RSP_7_1:
+    case BFD_RELOC_RSP_7_2:
+    case BFD_RELOC_RSP_7_3:
+    case BFD_RELOC_RSP_7_4:
+      *result = (operand >> (reloc - BFD_RELOC_RSP_7_0)) & 0x7f;
       return true;
 
     case BFD_RELOC_UNUSED:
@@ -8233,6 +8453,7 @@ match_insn (struct mips_cl_insn *insn, const struct mips_opcode *opcode,
   struct mips_arg_info arg;
   const struct mips_operand *operand;
   char c;
+  bool no_match_ok;
 
   imm_expr.X_op = O_absent;
   offset_expr.X_op = O_absent;
@@ -8255,6 +8476,8 @@ match_insn (struct mips_cl_insn *insn, const struct mips_opcode *opcode,
   arg.lax_match = lax_match;
   for (args = opcode->args;; ++args)
     {
+      no_match_ok = false;
+
       if (arg.token->type == OT_END)
 	{
 	  /* Handle unary instructions in which only one operand is given.
@@ -8349,6 +8572,11 @@ match_insn (struct mips_cl_insn *insn, const struct mips_opcode *opcode,
 
 	    case 'B':
 	      *offset_reloc = BFD_RELOC_MIPS_18_PCREL_S3;
+	      break;
+
+	    case 'e':
+	      /* Allow elision of RSP load/store index.  */
+	      no_match_ok = true;
 	      break;
 	    }
 	  break;
@@ -8466,7 +8694,7 @@ match_insn (struct mips_cl_insn *insn, const struct mips_opcode *opcode,
 	  arg.argnum = 1;
 	}
 
-      if (!match_operand (&arg, operand))
+      if (!match_operand (&arg, operand) && !no_match_ok)
 	return false;
     }
 }
@@ -9153,6 +9381,32 @@ macro_build (expressionS *ep, const char *name, const char *fmt, ...)
 	  *r = BFD_RELOC_MIPS_JMP;
 	  break;
 
+	case '-':
+	  switch (*(fmt + 1))
+	    {
+	    case '0':
+	    case '1':
+	    case '2':
+	    case '3':
+	    case '4':
+	      r[0] = va_arg (args, int);
+	      gas_assert (
+		r[0] == BFD_RELOC_RSP_7_0 + (unsigned)(*(fmt + 1) - '0'));
+
+	      {
+		const struct mips_int_operand *int_opnd;
+		operand = decode_mips_operand (fmt);
+		int_opnd = (const struct mips_int_operand *)operand;
+
+		if ((ep->X_add_number >> int_opnd->shift) << int_opnd->shift
+		    != ep->X_add_number)
+		  as_bad(_("invalid alignment for vector load/store addend"));
+		ep->X_add_number >>= int_opnd->shift;
+	      }
+	      ++fmt;
+	      continue;
+	    }
+	  /* Fallthrough.  */
 	default:
 	  operand = (mips_opts.micromips
 		     ? decode_micromips_operand (fmt)
@@ -10316,6 +10570,7 @@ macro (struct mips_cl_insn *ip, char *str)
   int hold_mips_optimize;
   unsigned int align;
   unsigned int op[MAX_OPERANDS];
+  int rsp_ldst_reloc_type;
 
   gas_assert (! mips_opts.mips16);
 
@@ -11019,7 +11274,12 @@ macro (struct mips_cl_insn *ip, char *str)
 	load_register (tempreg, &offset_expr, HAVE_64BIT_ADDRESSES);
       else if (mips_pic == NO_PIC)
 	{
-	  /* If this is a reference to a GP relative symbol, we want
+	  /* If assembling with N64 RSP ASE, only one BFD_RELOC_LO16 is
+	 sufficient to load the full symbol address in the 12-bit memory
+	 space, we want
+	       addiu	$tempreg,$zero,<sym>	(BFD_RELOC_LO16)
+
+	     If this is a reference to a GP relative symbol, we want
 	       addiu	$tempreg,$gp,<sym>	(BFD_RELOC_GPREL16)
 	     Otherwise we want
 	       lui	$tempreg,<sym>		(BFD_RELOC_HI16_S)
@@ -11046,7 +11306,12 @@ macro (struct mips_cl_insn *ip, char *str)
 
 	     For GP relative symbols in 64bit address space we can use
 	     the same sequence as in 32bit address space.  */
-	  if (HAVE_64BIT_SYMBOLS)
+	  if (mips_opts.ase & ASE_RSP)
+	    {
+	      macro_build (&offset_expr, ADDRESS_ADDI_INSN, "t,r,j",
+			   tempreg, ZERO, BFD_RELOC_LO16);
+	    }
+	  else if (HAVE_64BIT_SYMBOLS)
 	    {
 	      if ((valueT) offset_expr.X_add_number <= MAX_GPREL_OFFSET
 		  && !nopic_need_relax (offset_expr.X_add_symbol, 1))
@@ -11841,6 +12106,140 @@ macro (struct mips_cl_insn *ip, char *str)
 
       break;
 
+    case M_LBV_AB:
+      s = "lbv";
+      fmt = "-Z-e,-0(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_0;
+      goto ld_st_rsp;
+    case M_LSV_AB:
+      s = "lsv";
+      fmt = "-Z-e,-1(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_1;
+      goto ld_st_rsp;
+    case M_LLV_AB:
+      s = "llv";
+      fmt = "-Z-e,-2(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_2;
+      goto ld_st_rsp;
+    case M_LDV_AB:
+      s = "ldv";
+      fmt = "-Z-e,-3(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_3;
+      goto ld_st_rsp;
+    case M_LQV_AB:
+      s = "lqv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_LRV_AB:
+      s = "lrv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_LPV_AB:
+      s = "lpv";
+      fmt = "-Z-e,-3(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_3;
+      goto ld_st_rsp;
+    case M_LUV_AB:
+      s = "luv";
+      fmt = "-Z-e,-3(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_3;
+      goto ld_st_rsp;
+    case M_LHV_AB:
+      s = "lhv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_LFV_AB:
+      s = "lfv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_LWV_AB:
+      s = "lwv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_LTV_AB:
+      s = "ltv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_SBV_AB:
+      s = "sbv";
+      fmt = "-Z-e,-0(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_0;
+      goto ld_st_rsp;
+    case M_SSV_AB:
+      s = "ssv";
+      fmt = "-Z-e,-1(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_1;
+      goto ld_st_rsp;
+    case M_SLV_AB:
+      s = "slv";
+      fmt = "-Z-e,-2(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_2;
+      goto ld_st_rsp;
+    case M_SDV_AB:
+      s = "sdv";
+      fmt = "-Z-e,-3(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_3;
+      goto ld_st_rsp;
+    case M_SQV_AB:
+      s = "sqv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_SRV_AB:
+      s = "srv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_SPV_AB:
+      s = "spv";
+      fmt = "-Z-e,-3(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_3;
+      goto ld_st_rsp;
+    case M_SUV_AB:
+      s = "suv";
+      fmt = "-Z-e,-3(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_3;
+      goto ld_st_rsp;
+    case M_SHV_AB:
+      s = "shv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_SFV_AB:
+      s = "sfv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_SWV_AB:
+      s = "swv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+    case M_STV_AB:
+      s = "stv";
+      fmt = "-Z-e,-4(b)";
+      rsp_ldst_reloc_type = BFD_RELOC_RSP_7_4;
+      goto ld_st_rsp;
+
+    ld_st_rsp:
+      macro_build (&offset_expr, s, fmt, op[0], op[1], rsp_ldst_reloc_type,
+		   op[3]);
+
+      if (offset_expr.X_op != O_constant && offset_expr.X_op != O_symbol)
+	{
+	  as_bad (_("expression too complex"));
+	  offset_expr.X_op = O_constant;
+	}
+      if (offset_expr.X_op == O_constant && offset_expr.X_add_number != op[2])
+	as_bad(_("operand 2 out of range"));
+      break;
+
     case M_LBUE_AB:
       s = "lbue";
       fmt = "t,+j(b)";
@@ -12482,7 +12881,15 @@ macro (struct mips_cl_insn *ip, char *str)
 	      break;
 	    }
 
-	  if (breg == 0)
+	  if (mips_opts.ase & ASE_RSP)
+	    {
+	      /* If base reg is $zero and assembling for N64 RSP,
+		 all valid addresses fit in one LO16.  */
+	      macro_build (&offset_expr, s, fmt, op[0],
+			   BFD_RELOC_LO16, op[2]/*=ZERO*/);
+	      used_at = 0; // !TODO: check this
+	    }
+	  else if (breg == 0)
 	    {
 	      if ((valueT) offset_expr.X_add_number <= MAX_GPREL_OFFSET
 		  && !nopic_need_relax (offset_expr.X_add_symbol, 1))
@@ -15993,6 +16400,7 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
     case BFD_RELOC_MICROMIPS_CALL_HI16:
     case BFD_RELOC_MICROMIPS_CALL_LO16:
     case BFD_RELOC_MIPS_EH:
+    case BFD_RELOC_RSP_16:
       if (fixP->fx_done)
 	{
 	  offsetT value;
@@ -16030,6 +16438,30 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 	      md_number_to_chars (buf + (target_big_endian ? 4 : 0), *valP, 4);
 	      md_number_to_chars (buf + (target_big_endian ? 0 : 4), hiv, 4);
 	    }
+	}
+      break;
+
+    case BFD_RELOC_RSP_7_0:
+    case BFD_RELOC_RSP_7_1:
+    case BFD_RELOC_RSP_7_2:
+    case BFD_RELOC_RSP_7_3:
+    case BFD_RELOC_RSP_7_4:
+      if (fixP->fx_done)
+	{
+	  offsetT value;
+
+	  if (calculate_reloc (fixP->fx_r_type, *valP, &value))
+	    {
+	      insn = read_reloc_insn (buf, fixP->fx_r_type);
+	      if (mips16_reloc_p (fixP->fx_r_type))
+		insn |= mips16_immed_extend (value, 7);
+	      else
+		insn |= (value & 0x7f);
+	      write_reloc_insn (buf, fixP->fx_r_type, insn);
+	    }
+	  else
+	    as_bad_where (fixP->fx_file, fixP->fx_line,
+			  _("unsupported constant in relocation"));
 	}
       break;
 
@@ -20160,6 +20592,9 @@ static const struct mips_cpu_info mips_cpu_info_table[] =
 						ISA_MIPS64R6, CPU_MIPS64R6},
   { "p6600",	      0, ASE_VIRT | ASE_MSA,	ISA_MIPS64R6, CPU_MIPS64R6},
 
+  /* N64 Reality Signal Processor (RSP).  */
+  { "rsp",	      0, ASE_RSP,		ISA_MIPS2,    CPU_RSP  },
+
   /* End marker.  */
   { NULL, 0, 0, 0, 0 }
 };
@@ -20424,6 +20859,9 @@ MIPS options:\n\
   fprintf (stream, _("\
 -mloongson-ext2		generate Loongson EXTensions R2 (EXT2) instructions\n\
 -mno-loongson-ext2	do not generate Loongson EXTensions R2 Instructions\n"));
+  fprintf (stream, _("\
+-mrsp			generate N64 Reality Signal Processor (RSP) instructions\n\
+-mno-rsp		do not generate N64 Reality Signal Processor Instructions\n"));
   fprintf (stream, _("\
 -minsn32		only generate 32-bit microMIPS instructions\n\
 -mno-insn32		generate all microMIPS instructions\n"));

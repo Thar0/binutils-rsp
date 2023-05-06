@@ -4699,7 +4699,11 @@ emit_expr_fix (expressionS *exp, unsigned int nbytes, fragS *frag, char *p,
 	r = BFD_RELOC_8;
 	break;
       case 2:
+#ifdef TC_MIPS
+	r = (stdoutput->arch_info->mach == bfd_mach_mips_rsp) ? BFD_RELOC_RSP_16 : BFD_RELOC_16;
+#else
 	r = BFD_RELOC_16;
+#endif
 	break;
       case 3:
 	r = BFD_RELOC_24;

@@ -415,6 +415,18 @@ static const struct mips_cp0sel_name mips_cp0sel_names_xlr[] = {
   { 29, 1, "c0_datahi"          }
 };
 
+static const char * const mips_cp0_names_rsp[32] =
+{
+  "c0_sp_mem_addr", "c0_sp_dram_addr",  "c0_sp_rd_len",     "c0_sp_wr_len",
+  "c0_sp_status",   "c0_sp_dma_full",   "c0_sp_dma_busy",   "c0_sp_semaphore",
+  "c0_dpc_start",   "c0_dpc_end",       "c0_dpc_current",   "c0_dpc_status",
+  "c0_dpc_clock",   "c0_dpc_bufbusy",   "c0_dpc_pipebusy",  "c0_dpc_tmem",
+  "$16",            "$17",              "$18",              "$19",
+  "$20",            "$21",              "$22",              "$23",
+  "$24",            "$25",              "$26",              "$27",
+  "$28",            "$29",              "$30",              "$31"
+};
+
 static const char * const mips_hwr_names_numeric[32] =
 {
   "$0",   "$1",   "$2",   "$3",   "$4",   "$5",   "$6",   "$7",
@@ -436,6 +448,14 @@ static const char * const msa_control_names[32] =
 {
   "msa_ir",	"msa_csr",	"msa_access",	"msa_save",
   "msa_modify",	"msa_request",	"msa_map",	"msa_unmap",
+  "$8",   "$9",   "$10",  "$11",  "$12",  "$13",  "$14",  "$15",
+  "$16",  "$17",  "$18",  "$19",  "$20",  "$21",  "$22",  "$23",
+  "$24",  "$25",  "$26",  "$27",  "$28",  "$29",  "$30",  "$31"
+};
+
+static const char * const rsp_vec_ctrl_names[32] =
+{
+  "$vco", "$vcc", "$vce", "$3",   "$4",   "$5",   "$6",   "$7",
   "$8",   "$9",   "$10",  "$11",  "$12",  "$13",  "$14",  "$15",
   "$16",  "$17",  "$18",  "$19",  "$20",  "$21",  "$22",  "$23",
   "$24",  "$25",  "$26",  "$27",  "$28",  "$29",  "$30",  "$31"
@@ -708,6 +728,10 @@ const struct mips_arch_choice mips_arch_choices[] =
     mips_cp0_names_xlr,
     mips_cp0sel_names_xlr, ARRAY_SIZE (mips_cp0sel_names_xlr),
     mips_cp1_names_mips3264, mips_hwr_names_numeric },
+
+  { "rsp",	1, bfd_mach_mips_rsp, CPU_RSP, ISA_MIPS2 | INSN_RSP, ASE_RSP,
+    mips_cp0_names_rsp, NULL, 0, mips_cp1_names_numeric,
+    mips_hwr_names_numeric },
 
   /* This entry, mips16, is here only for ISA/processor selection; do
      not print its name.  */
@@ -1009,6 +1033,12 @@ parse_mips_ase_option (const char *option)
       return true;
     }
 
+  if (startswith (option, "rsp"))
+    {
+      mips_ase |= ASE_RSP;
+      return true;
+    }
+
   return false;
 }
 
@@ -1259,6 +1289,13 @@ print_reg (struct disassemble_info *info, const struct mips_opcode *opcode,
 		 msa_control_names[regno]);
       break;
 
+    case OP_REG_RSP_VEC:
+      info->fprintf_func (info->stream, "$v%d", regno);
+      break;
+
+    case OP_REG_RSP_VEC_CTRL:
+      info->fprintf_func (info->stream, "%s", rsp_vec_ctrl_names[regno]);
+      break;
     }
 }
 
@@ -1745,6 +1782,25 @@ print_insn_arg (struct disassemble_info *info,
       infprintf (is, dis_style_text, "]");
       break;
 
+    case OP_REG_RSP_INDEX:
+      {
+	unsigned int vsel;
+
+	vsel = uval >> 5;
+	uval &= 31;
+
+	print_reg (info, opcode, OP_REG_RSP_VEC, uval);
+	if (vsel & 8)
+	  infprintf (is, dis_style_text, "[%d]", vsel & 7);
+	else if (vsel & 4)
+	  infprintf (is, dis_style_text, "[%dh]", vsel & 3);
+	else if (vsel & 2)
+	  infprintf (is, dis_style_text, "[%dq]", vsel & 1);
+	else if (vsel & 1)
+	  infprintf (is, dis_style_text, "[%d?]", vsel);
+      }
+      break;
+
     case OP_REG_INDEX:
       infprintf (is, dis_style_text, "[");
       print_reg (info, opcode, OP_REG_GP, uval);
@@ -1855,6 +1911,7 @@ validate_insn_args (const struct mips_opcode *opcode,
 		case OP_IMM_INDEX:
 		case OP_REG_INDEX:
 		case OP_SAVE_RESTORE_LIST:
+		case OP_REG_RSP_INDEX:
 		  break;
 		}
 	    }
@@ -2769,6 +2826,10 @@ static struct
   { "loongson-ext2",
 		  N_("Recognize the Loongson EXTensions R2 (EXT2) "
 		     " instructions.\n"),
+		  MIPS_OPTION_ARG_NONE },
+  { "rsp",
+		  N_("Recognize the N64 Reality Signal Processor (RSP) "
+		     " vector instructions.\n"),
 		  MIPS_OPTION_ARG_NONE },
   { "gpr-names=", N_("Print GPR names according to specified ABI.\n\
                   Default: based on binary being disassembled.\n"),

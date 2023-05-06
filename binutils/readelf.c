@@ -4055,6 +4055,7 @@ get_machine_flags (Filedata * filedata, unsigned e_flags, unsigned e_machine)
 	    case E_MIPS_MACH_OCTEON2: strcat (buf, ", octeon2"); break;
 	    case E_MIPS_MACH_OCTEON3: strcat (buf, ", octeon3"); break;
 	    case E_MIPS_MACH_XLR:  strcat (buf, ", xlr"); break;
+	    case E_MIPS_MACH_RSP:  strcat (buf, ", rsp"); break;
 	    case E_MIPS_MACH_IAMR2:  strcat (buf, ", interaptiv-mr2"); break;
 	    case E_MIPS_MACH_ALLEGREX: strcat(buf, ", allegrex"); break;
 	    case 0:
