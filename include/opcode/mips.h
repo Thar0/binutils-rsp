@@ -436,7 +436,7 @@ enum mips_operand_type {
   /* A register operand that must not be zero.  */
   OP_NON_ZERO_REG,
 
-  /* N64 RSP vector register with element specifier, e.g. $v0[1q]) */
+  /* N64 RSP vector register with element specifier, e.g. $v0[1q] or $v0.q1) */
   OP_REG_RSP_INDEX,
 };
 
