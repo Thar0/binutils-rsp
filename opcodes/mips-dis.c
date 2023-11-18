@@ -415,6 +415,18 @@ static const struct mips_cp0sel_name mips_cp0sel_names_xlr[] = {
   { 29, 1, "c0_datahi"          }
 };
 
+static const char * const mips_cp0_names_rsp[32] =
+{
+  "c0_sp_mem_addr", "c0_sp_dram_addr",  "c0_sp_rd_len",     "c0_sp_wr_len",
+  "c0_sp_status",   "c0_sp_dma_full",   "c0_sp_dma_busy",   "c0_sp_semaphore",
+  "c0_dpc_start",   "c0_dpc_end",       "c0_dpc_current",   "c0_dpc_status",
+  "c0_dpc_clock",   "c0_dpc_bufbusy",   "c0_dpc_pipebusy",  "c0_dpc_tmem",
+  "$16",            "$17",              "$18",              "$19",
+  "$20",            "$21",              "$22",              "$23",
+  "$24",            "$25",              "$26",              "$27",
+  "$28",            "$29",              "$30",              "$31"
+};
+
 static const char * const mips_hwr_names_numeric[32] =
 {
   "$0",   "$1",   "$2",   "$3",   "$4",   "$5",   "$6",   "$7",
@@ -436,6 +448,14 @@ static const char * const msa_control_names[32] =
 {
   "msa_ir",	"msa_csr",	"msa_access",	"msa_save",
   "msa_modify",	"msa_request",	"msa_map",	"msa_unmap",
+  "$8",   "$9",   "$10",  "$11",  "$12",  "$13",  "$14",  "$15",
+  "$16",  "$17",  "$18",  "$19",  "$20",  "$21",  "$22",  "$23",
+  "$24",  "$25",  "$26",  "$27",  "$28",  "$29",  "$30",  "$31"
+};
+
+static const char * const rsp_vec_ctrl_names[32] =
+{
+  "$vco", "$vcc", "$vce", "$3",   "$4",   "$5",   "$6",   "$7",
   "$8",   "$9",   "$10",  "$11",  "$12",  "$13",  "$14",  "$15",
   "$16",  "$17",  "$18",  "$19",  "$20",  "$21",  "$22",  "$23",
   "$24",  "$25",  "$26",  "$27",  "$28",  "$29",  "$30",  "$31"
@@ -709,12 +729,28 @@ const struct mips_arch_choice mips_arch_choices[] =
     mips_cp0sel_names_xlr, ARRAY_SIZE (mips_cp0sel_names_xlr),
     mips_cp1_names_mips3264, mips_hwr_names_numeric },
 
+  { "rsp",	1, bfd_mach_mips_rsp, CPU_RSP, ISA_MIPS2 | INSN_RSP, ASE_RSP,
+    mips_cp0_names_rsp, NULL, 0, mips_cp1_names_numeric,
+    mips_hwr_names_numeric },
+
   /* This entry, mips16, is here only for ISA/processor selection; do
      not print its name.  */
   { "",		1, bfd_mach_mips16, CPU_MIPS16, ISA_MIPS64,
     ASE_MIPS16E2 | ASE_MIPS16E2_MT,
     mips_cp0_names_numeric, NULL, 0, mips_cp1_names_numeric,
     mips_hwr_names_numeric },
+};
+
+struct mips_syntax_choice
+{
+  const char * name;
+  bool uses_extended;
+};
+
+struct mips_syntax_choice mips_syntax_choices[] =
+{
+  { "sgi", false },
+  { "extended", true },
 };
 
 /* ISA and processor type to disassemble for, and register names to use.
@@ -731,6 +767,7 @@ static const struct mips_cp0sel_name *mips_cp0sel_names;
 static int mips_cp0sel_names_len;
 static const char * const *mips_cp1_names;
 static const char * const *mips_hwr_names;
+static bool mips_rsp_use_extended_syntax;
 
 /* Other options */
 static int no_aliases;	/* If set disassemble as most general inst.  */
@@ -788,6 +825,20 @@ choose_arch_by_number (unsigned long mach)
 	  hint_arch_choice = c;
 	}
     }
+  return c;
+}
+
+static const struct mips_syntax_choice *
+choose_rsp_syntax_by_name (const char *name, unsigned int namelen)
+{
+  const struct mips_syntax_choice *c = NULL;
+  unsigned int i;
+
+  for (i = 0, c = NULL; i < ARRAY_SIZE (mips_syntax_choices) && c == NULL; i++)
+    if (strncmp (mips_syntax_choices[i].name, name, namelen) == 0
+	&& strlen (mips_syntax_choices[i].name) == namelen)
+      c = &mips_syntax_choices[i];
+
   return c;
 }
 
@@ -892,6 +943,8 @@ set_default_mips_dis_options (struct disassemble_info *info)
   mips_cp1_names = mips_cp1_names_numeric;
   mips_hwr_names = mips_hwr_names_numeric;
   no_aliases = 0;
+
+  mips_rsp_use_extended_syntax = false;
 
   /* Set ISA, architecture, and cp0 register names as best we can.  */
 #if ! SYMTAB_AVAILABLE
@@ -1009,6 +1062,12 @@ parse_mips_ase_option (const char *option)
       return true;
     }
 
+  if (strcmp (option, "rsp") == 0)
+    {
+      mips_ase |= ASE_RSP;
+      return true;
+    }
+
   return false;
 }
 
@@ -1019,6 +1078,7 @@ parse_mips_dis_option (const char *option, unsigned int len)
   const char *val;
   const struct mips_abi_choice *chosen_abi;
   const struct mips_arch_choice *chosen_arch;
+  const struct mips_syntax_choice *chosen_syntax;
 
   /* Try to match options that are simple flags */
   if (startswith (option, "no-aliases"))
@@ -1120,6 +1180,15 @@ parse_mips_dis_option (const char *option, unsigned int len)
 	  mips_cp1_names = chosen_arch->cp1_names;
 	  mips_hwr_names = chosen_arch->hwr_names;
 	}
+      return;
+    }
+
+  if (strncmp("rsp-syntax", option, optionlen) == 0
+      && strlen ("rsp-syntax") == optionlen)
+    {
+      chosen_syntax = choose_rsp_syntax_by_name(val, vallen);
+      if (chosen_syntax != NULL)
+	mips_rsp_use_extended_syntax = chosen_syntax->uses_extended;
       return;
     }
 
@@ -1259,6 +1328,13 @@ print_reg (struct disassemble_info *info, const struct mips_opcode *opcode,
 		 msa_control_names[regno]);
       break;
 
+    case OP_REG_RSP_VEC:
+      info->fprintf_func (info->stream, "$v%d", regno);
+      break;
+
+    case OP_REG_RSP_VEC_CTRL:
+      info->fprintf_func (info->stream, "%s", rsp_vec_ctrl_names[regno]);
+      break;
     }
 }
 
@@ -1740,9 +1816,67 @@ print_insn_arg (struct disassemble_info *info,
       break;
 
     case OP_IMM_INDEX:
-      infprintf (is, dis_style_text, "[");
-      infprintf (is, dis_style_immediate, "%d", uval);
-      infprintf (is, dis_style_text, "]");
+      if (mips_ase == ASE_RSP && mips_rsp_use_extended_syntax)
+	{
+	  static const char * const rsp_special_load_stores[] =
+	    { "lpv", "luv", "spv", "suv", "ltv", "stv" };
+	  size_t i;
+
+	  for (i = 0; i < ARRAY_SIZE(rsp_special_load_stores); ++i)
+	    {
+	      if (strcmp (opcode->name, rsp_special_load_stores[i]) == 0)
+		{
+		  if (opcode->name[1] == 't')
+		    uval /= 2;
+
+		  infprintf (is, dis_style_text, ".e%d", uval);
+		  break;
+		}
+	    }
+
+	  if (i == ARRAY_SIZE(rsp_special_load_stores))
+	    infprintf (is, dis_style_text, ".b%d", uval);
+	}
+      else
+	{
+	  infprintf (is, dis_style_text, "[");
+	  infprintf (is, dis_style_immediate, "%d", uval);
+	  infprintf (is, dis_style_text, "]");
+	}
+      break;
+
+    case OP_REG_RSP_INDEX:
+      {
+	unsigned int vsel;
+
+	vsel = uval >> 5;
+	uval &= 31;
+
+	print_reg (info, opcode, OP_REG_RSP_VEC, uval);
+
+	if (mips_rsp_use_extended_syntax)
+	  {
+	    if (vsel & 8)
+	      infprintf (is, dis_style_text, ".e%d", vsel & 7);
+	    else if (vsel & 4)
+	      infprintf (is, dis_style_text, ".h%d", vsel & 3);
+	    else if (vsel & 2)
+	      infprintf (is, dis_style_text, ".q%d", vsel & 1);
+	    else if (vsel & 1)
+	      infprintf (is, dis_style_text, ".?%d", vsel);
+	  }
+	else
+	  {
+	    if (vsel & 8)
+	      infprintf (is, dis_style_text, "[%d]", vsel & 7);
+	    else if (vsel & 4)
+	      infprintf (is, dis_style_text, "[%dh]", vsel & 3);
+	    else if (vsel & 2)
+	      infprintf (is, dis_style_text, "[%dq]", vsel & 1);
+	    else if (vsel & 1)
+	      infprintf (is, dis_style_text, "[%d?]", vsel);
+	  }
+      }
       break;
 
     case OP_REG_INDEX:
@@ -1855,6 +1989,7 @@ validate_insn_args (const struct mips_opcode *opcode,
 		case OP_IMM_INDEX:
 		case OP_REG_INDEX:
 		case OP_SAVE_RESTORE_LIST:
+		case OP_REG_RSP_INDEX:
 		  break;
 		}
 	    }
@@ -2731,6 +2866,7 @@ typedef enum
   MIPS_OPTION_ARG_NONE = -1,
   MIPS_OPTION_ARG_ABI,
   MIPS_OPTION_ARG_ARCH,
+  MIPS_OPTION_ARG_SYNTAX,
   MIPS_OPTION_ARG_SIZE
 } mips_option_arg_t;
 
@@ -2749,7 +2885,7 @@ static struct
   { "virt",       N_("Recognize the virtualization ASE instructions.\n"),
 		  MIPS_OPTION_ARG_NONE },
   { "xpa",        N_("Recognize the eXtended Physical Address (XPA) ASE\n\
-                  instructions.\n"),
+		     instructions.\n"),
 		  MIPS_OPTION_ARG_NONE },
   { "ginv",       N_("Recognize the Global INValidate (GINV) ASE "
 		     "instructions.\n"),
@@ -2770,25 +2906,32 @@ static struct
 		  N_("Recognize the Loongson EXTensions R2 (EXT2) "
 		     " instructions.\n"),
 		  MIPS_OPTION_ARG_NONE },
+  { "rsp",
+		  N_("Recognize the N64 Reality Signal Processor (RSP) "
+		     " vector instructions.\n"),
+		  MIPS_OPTION_ARG_NONE },
   { "gpr-names=", N_("Print GPR names according to specified ABI.\n\
-                  Default: based on binary being disassembled.\n"),
+		     Default: based on binary being disassembled.\n"),
 		  MIPS_OPTION_ARG_ABI },
   { "fpr-names=", N_("Print FPR names according to specified ABI.\n\
-                  Default: numeric.\n"),
+		     Default: numeric.\n"),
 		  MIPS_OPTION_ARG_ABI },
   { "cp0-names=", N_("Print CP0 register names according to specified "
 		     "architecture.\n\
-                  Default: based on binary being disassembled.\n"),
+		     Default: based on binary being disassembled.\n"),
 		  MIPS_OPTION_ARG_ARCH },
   { "hwr-names=", N_("Print HWR names according to specified architecture.\n\
-                  Default: based on binary being disassembled.\n"),
+		     Default: based on binary being disassembled.\n"),
 		  MIPS_OPTION_ARG_ARCH },
   { "reg-names=", N_("Print GPR and FPR names according to specified ABI.\n"),
 		  MIPS_OPTION_ARG_ABI },
   { "reg-names=", N_("Print CP0 register and HWR names according to "
 		     "specified\n\
-                  architecture."),
-		  MIPS_OPTION_ARG_ARCH }
+		     architecture.\n"),
+		  MIPS_OPTION_ARG_ARCH },
+  { "rsp-syntax=",
+		  N_("Print RSP vector indices according to specified syntax."),
+		  MIPS_OPTION_ARG_SYNTAX }
 };
 
 /* Build the structure representing valid MIPS disassembler options.
@@ -2827,6 +2970,14 @@ disassembler_options_mips (void)
 	  args[MIPS_OPTION_ARG_ARCH].values[j++] = mips_arch_choices[i].name;
       /* The array we return must be NULL terminated.  */
       args[MIPS_OPTION_ARG_ARCH].values[j] = NULL;
+
+      args[MIPS_OPTION_ARG_SYNTAX].name = "SYNTAX";
+      args[MIPS_OPTION_ARG_SYNTAX].values
+	= XNEWVEC(const char *, ARRAY_SIZE (mips_syntax_choices) + 1);
+      for (i = 0; i < ARRAY_SIZE (mips_syntax_choices); i++)
+	args[MIPS_OPTION_ARG_SYNTAX].values[i] = mips_syntax_choices[i].name;
+      /* The array we return must be NULL terminated.  */
+      args[MIPS_OPTION_ARG_SYNTAX].values[i] = NULL;
 
       /* The array we return must be NULL terminated.  */
       args[MIPS_OPTION_ARG_SIZE].name = NULL;

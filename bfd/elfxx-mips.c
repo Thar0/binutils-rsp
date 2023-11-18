@@ -6043,6 +6043,9 @@ mips_elf_calculate_relocation (bfd *abfd, bfd *input_bfd,
       return bfd_reloc_ok;
     }
 
+  if (abfd->arch_info->bits_per_address <= 16 && howto->bitsize <= 16)
+    symbol &= 0xFFFF;
+
   /* Figure out what kind of relocation is being performed.  */
   switch (r_type)
     {
@@ -6050,10 +6053,22 @@ mips_elf_calculate_relocation (bfd *abfd, bfd *input_bfd,
       return bfd_reloc_continue;
 
     case R_MIPS_16:
+    case R_MIPS_RSP16:
       if (howto->partial_inplace)
 	addend = _bfd_mips_elf_sign_extend (addend, 16);
       value = symbol + addend;
       overflowed_p = mips_elf_overflow_p (value, 16);
+      break;
+
+    case R_MIPS_RSP70:
+    case R_MIPS_RSP71:
+    case R_MIPS_RSP72:
+    case R_MIPS_RSP73:
+    case R_MIPS_RSP74:
+      if (howto->partial_inplace)
+	addend = _bfd_mips_elf_sign_extend (addend, 7);
+      value = symbol + addend;
+      overflowed_p = mips_elf_overflow_p (value, 7);
       break;
 
     case R_MIPS_32:
@@ -6603,6 +6618,27 @@ mips_elf_perform_relocation (struct bfd_link_info *info,
   /* Obtain the current value.  */
   x = mips_elf_obtain_contents (howto, relocation, input_bfd, contents);
 
+  /* Shift offset for RSP relocations.  */
+  if (r_type >= R_MIPS_RSP70 && r_type <= R_MIPS_RSP74)
+    {
+      int shift = r_type - R_MIPS_RSP70;
+      int addend = x & 0x7f;
+
+      value -= addend;
+
+      /* Ensure symbol alignment is permitted.  */
+      if (value % (1 << shift) != 0)
+	{
+	  info->callbacks->einfo
+	    (_("%X%H: invalid alignment while performing an R_MIPS_RSP7%d relocation\n"),
+	    input_bfd, input_section, relocation->r_offset, shift);
+	  return false;
+	}
+
+      value >>= shift;
+      value += addend;
+    }
+
   /* Clear the field we are setting.  */
   x &= ~howto->dst_mask;
 
@@ -7059,6 +7095,9 @@ _bfd_elf_mips_mach (flagword flags)
 
     case EF_MIPS_MACH_IAMR2:
       return bfd_mach_mips_interaptiv_mr2;
+
+    case EF_MIPS_MACH_RSP:
+      return bfd_mach_mips_rsp;
 
     default:
       switch (flags & EF_MIPS_ARCH)
@@ -12469,6 +12508,9 @@ mips_set_isa_flags (bfd *abfd)
     case bfd_mach_mipsisa64r6:
       val = EF_MIPS_ARCH_64R6;
       break;
+
+    case bfd_mach_mips_rsp:
+      val = EF_MIPS_ARCH_2 | EF_MIPS_MACH_RSP;
     }
   elf_elfheader (abfd)->e_flags &= ~(EF_MIPS_ARCH | EF_MIPS_MACH);
   elf_elfheader (abfd)->e_flags |= val;

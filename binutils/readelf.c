@@ -3794,6 +3794,9 @@ decode_MIPS_machine_flags (char *out, unsigned int e_flags)
     case EF_MIPS_MACH_XLR:
       out = stpcpy (out, ", xlr");
       break;
+    case EF_MIPS_MACH_RSP:
+      out = stpcpy (out, ", rsp");
+      break;
     case EF_MIPS_MACH_IAMR2:
       out = stpcpy (out, ", interaptiv-mr2");
       break;
