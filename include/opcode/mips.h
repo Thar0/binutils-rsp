@@ -434,7 +434,10 @@ enum mips_operand_type {
   OP_CHECK_PREV,
 
   /* A register operand that must not be zero.  */
-  OP_NON_ZERO_REG
+  OP_NON_ZERO_REG,
+
+  /* N64 RSP vector register with element specifier, e.g. $v0[1q] or $v0.q1) */
+  OP_REG_RSP_INDEX,
 };
 
 /* Enumerates the types of MIPS register.  */
@@ -485,7 +488,13 @@ enum mips_reg_operand_type {
   OP_REG_MSA,
 
   /* MSA control registers $0-$31.  */
-  OP_REG_MSA_CTRL
+  OP_REG_MSA_CTRL,
+
+  /* RSP vector registers.  */
+  OP_REG_RSP_VEC,
+
+  /* RSP vector control registers $vco, $vcc, $vce.  */
+  OP_REG_RSP_VEC_CTRL
 };
 
 /* Base class for all operands.  */
@@ -1137,6 +1146,10 @@ mips_opcode_32bit_p (const struct mips_opcode *mo)
    encoding is needed or otherwise the final EXTEND entry will apply,
    for the disassembly of the prefix only.  */
 #define INSN2_SHORT_ONLY	    0x00010000
+/* RSP instruction runs on Vector Unit (VU). If not set, instruction runs on Scalar Unit (SU).  */
+#define INSN2_RSP_VU		    0x00020000
+/* Instruction has three load delay slots.  */
+#define INSN2_LD_3		    0x00040000
 
 /* Masks used to mark instructions to indicate which MIPS ISA level
    they were introduced in.  INSN_ISA_MASK masks an enumeration that
@@ -1225,7 +1238,7 @@ static const unsigned int mips_isa_table[] = {
 #undef ISAF
 
 /* Masks used for Chip specific instructions.  */
-#define INSN_CHIP_MASK		0x01ffffe0
+#define INSN_CHIP_MASK		0x03ffffe0
 
 /* MIPS R4650 instruction.  */
 #define INSN_4650		0x00000020
@@ -1264,6 +1277,8 @@ static const unsigned int mips_isa_table[] = {
 #define INSN_INTERAPTIV_MR2	0x00800000
 /* Sony PSP Allegrex instruction.  */
 #define INSN_ALLEGREX		0x01000000
+/* N64 Reality Signal Processor.  */
+#define INSN_RSP		0x02000000
 
 /* DSP ASE */
 #define ASE_DSP			0x00000001
@@ -1315,6 +1330,8 @@ static const unsigned int mips_isa_table[] = {
 /* The Enhanced VA Scheme (EVA) extension has instructions which are
    only valid for the R6 ISA.  */
 #define ASE_EVA_R6		0x02000000
+/* N64 Reality Signal Processor (RSP) instructions.  */
+#define ASE_RSP			0x04000000
 
 /* MIPS ISA defines, use instead of hardcoding ISA level.  */
 
@@ -1389,6 +1406,7 @@ static const unsigned int mips_isa_table[] = {
 #define CPU_OCTEON3	6503
 #define CPU_XLR     	887682   	/* decimal 'XLR'   */
 #define CPU_INTERAPTIV_MR2 736550	/* decimal 'IA2'  */
+#define CPU_RSP		828380		/* decimal 'RSP'  */
 
 /* Return true if the given CPU is included in INSN_* mask MASK.  */
 
@@ -1455,6 +1473,9 @@ cpu_is_member (int cpu, unsigned int mask)
 
     case CPU_XLR:
       return (mask & INSN_XLR) != 0;
+
+    case CPU_RSP:
+      return (mask & INSN_RSP) != 0;
 
     case CPU_INTERAPTIV_MR2:
       return (mask & INSN_INTERAPTIV_MR2) != 0;
@@ -1634,6 +1655,7 @@ enum
   M_LBE_AB,
   M_LBU_AB,
   M_LBUE_AB,
+  M_LBV_AB,
   M_LCA_AB,
   M_LD_AB,
   M_LDC1_AB,
@@ -1644,10 +1666,13 @@ enum
   M_LDM_AB,
   M_LDP_AB,
   M_LDR_AB,
+  M_LDV_AB,
+  M_LFV_AB,
   M_LH_AB,
   M_LHE_AB,
   M_LHU_AB,
   M_LHUE_AB,
+  M_LHV_AB,
   M_LI,
   M_LI_D,
   M_LI_DD,
@@ -1657,9 +1682,16 @@ enum
   M_LLD_AB,
   M_LLDP_AB,
   M_LLE_AB,
+  M_LLV_AB,
   M_LLWP_AB,
   M_LLWPE_AB,
+  M_LPV_AB,
   M_LQ_AB,
+  M_LQV_AB,
+  M_LRV_AB,
+  M_LSV_AB,
+  M_LTV_AB,
+  M_LUV_AB,
   M_LW_AB,
   M_LWE_AB,
   M_LWC0_AB,
@@ -1673,6 +1705,7 @@ enum
   M_LWR_AB,
   M_LWRE_AB,
   M_LWU_AB,
+  M_LWV_AB,
   M_MSGSND,
   M_MSGLD,
   M_MSGLD_T,
@@ -1707,6 +1740,7 @@ enum
   M_S_S,
   M_SAA_AB,
   M_SAAD_AB,
+  M_SBV_AB,
   M_SC_AB,
   M_SCD_AB,
   M_SCDP_AB,
@@ -1722,8 +1756,10 @@ enum
   M_SDM_AB,
   M_SDP_AB,
   M_SDR_AB,
+  M_SDV_AB,
   M_SEQ,
   M_SEQ_I,
+  M_SFV_AB,
   M_SGE,
   M_SGE_I,
   M_SGEU,
@@ -1732,19 +1768,27 @@ enum
   M_SGT_I,
   M_SGTU,
   M_SGTU_I,
+  M_SHV_AB,
   M_SLE,
   M_SLE_I,
   M_SLEU,
   M_SLEU_I,
   M_SLT_I,
   M_SLTU_I,
+  M_SLV_AB,
   M_SNE,
   M_SNE_I,
   M_SB_AB,
   M_SBE_AB,
   M_SH_AB,
   M_SHE_AB,
+  M_SPV_AB,
   M_SQ_AB,
+  M_SQV_AB,
+  M_SRV_AB,
+  M_SSV_AB,
+  M_STV_AB,
+  M_SUV_AB,
   M_SW_AB,
   M_SWE_AB,
   M_SWC0_AB,
@@ -1757,6 +1801,7 @@ enum
   M_SWP_AB,
   M_SWR_AB,
   M_SWRE_AB,
+  M_SWV_AB,
   M_SUB_I,
   M_SUBU_I,
   M_SUBU_I_2,

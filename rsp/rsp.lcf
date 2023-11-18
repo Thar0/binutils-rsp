@@ -1,0 +1,48 @@
+SP_DMEM_START = 0x04000000;
+SP_DMEM_SIZE = 0x1000;
+SP_IMEM_START = SP_DMEM_START + SP_DMEM_SIZE;
+SP_IMEM_SIZE = 0x1000;
+
+OUTPUT_ARCH(mips:rsp)
+OUTPUT_FORMAT("elf32-bigmips")
+ENTRY(SP_IMEM_START)
+
+SECTIONS
+{
+    /* DMEM */
+    . = SP_DMEM_START;
+    .rodata ALIGN(16):
+    {
+        /* NULL */
+        FILL(0);
+
+        __rodata_start = .;
+        *(.data);
+        *(.rodata);
+        . = ALIGN(8);
+        __rodata_end = .;
+    }
+    .bss ALIGN(8):
+    {
+        __bss_start = .;
+        *(.bss);
+        __bss_end = .;
+        ASSERT((__bss_end <= SP_DMEM_START + SP_DMEM_SIZE), "Error: Not enough room in DMEM");
+    }
+
+    /* IMEM */
+    . = SP_IMEM_START;
+    .text ALIGN(8):
+    {
+        /* nop */
+        FILL(0);
+
+        __text_start = .;
+        *(.text);
+        . = ALIGN(8);
+        __text_end = .;
+        ASSERT ((__text_end <= SP_IMEM_START + SP_IMEM_SIZE), "Error: Not enough room in IMEM");
+    }
+
+    /DISCARD/ : { *(*); }
+}

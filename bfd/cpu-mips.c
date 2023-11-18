@@ -107,6 +107,7 @@ enum
   I_mipsocteon2,
   I_mipsocteon3,
   I_xlr,
+  I_rsp,
   I_interaptiv_mr2,
   I_allegrex,
   I_micromips
@@ -162,6 +163,7 @@ static const bfd_arch_info_type arch_info_struct[] =
   N (64, 64, bfd_mach_mips_octeon2,"mips:octeon2", false, NN(I_mipsocteon2)),
   N (64, 64, bfd_mach_mips_octeon3, "mips:octeon3", false, NN(I_mipsocteon3)),
   N (64, 64, bfd_mach_mips_xlr, "mips:xlr",	   false, NN(I_xlr)),
+  N (32, 16, bfd_mach_mips_rsp, "mips:rsp",	   false, NN(I_rsp)),
   N (32, 32, bfd_mach_mips_interaptiv_mr2, "mips:interaptiv-mr2", false,
      NN(I_interaptiv_mr2)),
   N (32, 32, bfd_mach_mips_allegrex, "mips:allegrex", false, NN(I_allegrex)),
